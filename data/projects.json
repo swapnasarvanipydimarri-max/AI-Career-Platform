@@ -1,0 +1,32 @@
+[
+    {
+        "title": "Sales Dashboard",
+        "skills": ["Python", "Pandas", "Data Visualization", "Power BI"],
+        "description": "Build an interactive dashboard to analyze sales performance."
+    },
+    {
+        "title": "Customer Churn Prediction",
+        "skills": ["Python", "Pandas", "NumPy", "Machine Learning", "Statistics"],
+        "description": "Create a machine learning model to predict customer churn."
+    },
+    {
+        "title": "Movie Recommendation System",
+        "skills": ["Python", "Pandas", "NumPy", "Machine Learning"],
+        "description": "Build a recommendation system that suggests movies to users."
+    },
+    {
+        "title": "Personal Portfolio Website",
+        "skills": ["HTML", "CSS", "JavaScript", "React"],
+        "description": "Create a responsive portfolio website to showcase projects and skills."
+    },
+    {
+        "title": "Cloud Deployment Project",
+        "skills": ["AWS", "Docker", "Linux", "Networking"],
+        "description": "Deploy a web application using cloud infrastructure and containers."
+    },
+    {
+        "title": "Task Management API",
+        "skills": ["Python", "REST API", "SQL", "Git"],
+        "description": "Develop a backend API for creating and managing tasks."
+    }
+]
