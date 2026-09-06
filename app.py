@@ -85,6 +85,10 @@ if uploaded_file is not None:
 
     resume_analysis = analyze_resume(resume_text)
 
+    # --------------------------------------------------
+    # RESUME QUALITY
+    # --------------------------------------------------
+
     st.header("⭐ Resume Quality Analysis")
 
     col1, col2 = st.columns(2)
@@ -116,7 +120,6 @@ if uploaded_file is not None:
 
     st.divider()
 
-
     # --------------------------------------------------
     # RESUME PREVIEW
     # --------------------------------------------------
@@ -128,7 +131,6 @@ if uploaded_file is not None:
             resume_text,
             height=300
         )
-
 
     # --------------------------------------------------
     # SKILLS
@@ -146,9 +148,7 @@ if uploaded_file is not None:
             "No matching skills were detected."
         )
 
-
     st.divider()
-
 
     # --------------------------------------------------
     # CAREER RECOMMENDATIONS
@@ -201,14 +201,17 @@ if uploaded_file is not None:
 
         st.divider()
 
-
     # --------------------------------------------------
-    # CAREER MATCH CHART
+    # CAREER ANALYSIS
     # --------------------------------------------------
 
     if career_results:
 
         top_career = career_results[0]
+
+        # --------------------------------------------------
+        # CAREER MATCH CHART
+        # --------------------------------------------------
 
         st.subheader(
             "📈 Career Match Overview"
@@ -220,7 +223,6 @@ if uploaded_file is not None:
         }
 
         st.bar_chart(chart_data)
-
 
         # --------------------------------------------------
         # SKILL GAP ANALYSIS
@@ -238,9 +240,8 @@ if uploaded_file is not None:
             required_skills
         )
 
-
         # --------------------------------------------------
-        # METRICS
+        # SKILL GAP METRICS
         # --------------------------------------------------
 
         col1, col2, col3 = st.columns(3)
@@ -266,7 +267,6 @@ if uploaded_file is not None:
                 len(gap["missing_skills"])
             )
 
-
         # --------------------------------------------------
         # MISSING SKILLS
         # --------------------------------------------------
@@ -289,9 +289,7 @@ if uploaded_file is not None:
                 "🎉 You already have all required skills!"
             )
 
-
         st.divider()
-
 
         # --------------------------------------------------
         # LEARNING ROADMAP
@@ -321,233 +319,7 @@ if uploaded_file is not None:
                 item["resource"]
             )
 
-
         st.divider()
-
-            # --------------------------------------------------
-    # CAREER COMPARISON
-    # --------------------------------------------------
-
-    st.header("⚖️ Career Comparison")
-
-    career_names = list(
-        {result["career"] for result in career_results}
-    )
-
-    if len(career_names) >= 2:
-
-        career1 = st.selectbox(
-            "Select First Career",
-            career_names,
-            key="career1"
-        )
-
-        career2 = st.selectbox(
-            "Select Second Career",
-            career_names,
-            index=1,
-            key="career2"
-        )
-
-        if career1 != career2:
-
-            career1_data = next(
-                result for result in career_results
-                if result["career"] == career1
-            )
-
-            career2_data = next(
-                result for result in career_results
-                if result["career"] == career2
-            )
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                st.subheader(f"🎯 {career1}")
-
-                st.metric(
-                    "Career Match",
-                    f"{career1_data['score']}%"
-                )
-
-                st.write(
-                    "✅ Skills You Have"
-                )
-
-                st.write(
-                    ", ".join(
-                        career1_data["matched_skills"]
-                    )
-                    if career1_data["matched_skills"]
-                    else "None"
-                )
-
-                st.write(
-                    "📚 Skills to Learn"
-                )
-
-                st.write(
-                    ", ".join(
-                        career1_data["missing_skills"]
-                    )
-                    if career1_data["missing_skills"]
-                    else "None"
-                )
-
-            with col2:
-
-                st.subheader(f"🚀 {career2}")
-
-                st.metric(
-                    "Career Match",
-                    f"{career2_data['score']}%"
-                )
-
-                st.write(
-                    "✅ Skills You Have"
-                )
-
-                st.write(
-                    ", ".join(
-                        career2_data["matched_skills"]
-                    )
-                    if career2_data["matched_skills"]
-                    else "None"
-                )
-
-                st.write(
-                    "📚 Skills to Learn"
-                )
-
-                st.write(
-                    ", ".join(
-                        career2_data["missing_skills"]
-                    )
-                    if career2_data["missing_skills"]
-                    else "None"
-                )
-
-        else:
-
-            st.warning(
-                "Please select two different careers."
-            )
-
-        st.divider()
-
-        # --------------------------------------------------
-        # INTERVIEW QUESTION GENERATOR
-        # --------------------------------------------------
-
-        st.header("🎤 AI Interview Question Generator")
-
-        interview_questions = generate_interview_questions(
-            top_career["career"],
-            user_skills
-        )
-
-        st.write(
-            f"Practice these questions for a "
-            f"**{top_career['career']}** interview:"
-        )
-
-        for index, question in enumerate(
-            interview_questions,
-            start=1
-        ):
-            st.write(
-                f"**{index}. {question}**"
-            )
-
-
-        st.divider
-
-        # --------------------------------------------------
-        # JOB DESCRIPTION MATCHER
-        # --------------------------------------------------
-
-        st.header("💼 Job Description Matcher")
-
-        job_description = st.text_area(
-            "Paste a Job Description",
-            height=250,
-            placeholder="Paste the job description here..."
-        )
-
-        if st.button("🔍 Analyze Job Match"):
-
-            if job_description.strip():
-
-                match_score = calculate_job_match(
-                    resume_text,
-                    job_description
-                )
-
-                st.subheader("📊 Job Match Score")
-
-                st.metric(
-                    "Resume ↔ Job Match",
-                    f"{match_score}%"
-                )
-
-                if match_score >= 75:
-                    st.success(
-                        "🎉 Excellent match! Your resume aligns well with this job."
-                    )
-
-                elif match_score >= 50:
-                    st.warning(
-                        "👍 Good match, but there are some areas you could improve."
-                    )
-
-                else:
-                    st.error(
-                        "⚠️ Low match. Consider developing more relevant skills."
-                    )
-
-            else:
-
-                st.warning(
-                    "Please paste a job description first."
-                )
-
-        st.divider
-
-
-        # --------------------------------------------------
-        # AI CAREER ASSISTANT
-        # --------------------------------------------------
-
-        st.header("🤖 AI Career Assistant")
-
-        question = st.text_input(
-            "Ask a career question",
-            placeholder="Example: What skills should I learn?"
-        )
-
-        if st.button("💬 Ask Assistant"):
-
-            if question.strip():
-
-                answer = career_assistant(
-                    question,
-                    top_career["career"],
-                    user_skills,
-                    gap["missing_skills"]
-                )
-
-                st.info(answer)
-
-            else:
-
-                st.warning(
-                    "Please enter a question first."
-                )
-
-        st.divider
-
 
         # --------------------------------------------------
         # PROJECT RECOMMENDATIONS
@@ -585,3 +357,247 @@ if uploaded_file is not None:
             st.info(
                 "No project recommendations found."
             )
+
+        st.divider()
+
+        # --------------------------------------------------
+        # CAREER COMPARISON
+        # --------------------------------------------------
+
+        st.header("⚖️ Career Comparison")
+
+        career_names = [
+            result["career"]
+            for result in career_results
+        ]
+
+        if len(career_names) >= 2:
+
+            career1 = st.selectbox(
+                "Select First Career",
+                career_names,
+                key="career1"
+            )
+
+            career2 = st.selectbox(
+                "Select Second Career",
+                career_names,
+                index=1,
+                key="career2"
+            )
+
+            if career1 != career2:
+
+                career1_data = next(
+                    result
+                    for result in career_results
+                    if result["career"] == career1
+                )
+
+                career2_data = next(
+                    result
+                    for result in career_results
+                    if result["career"] == career2
+                )
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+
+                    st.subheader(
+                        f"🎯 {career1}"
+                    )
+
+                    st.metric(
+                        "Career Match",
+                        f"{career1_data['score']}%"
+                    )
+
+                    st.write(
+                        "✅ Skills You Have"
+                    )
+
+                    st.write(
+                        ", ".join(
+                            career1_data["matched_skills"]
+                        )
+                        if career1_data["matched_skills"]
+                        else "None"
+                    )
+
+                    st.write(
+                        "📚 Skills to Learn"
+                    )
+
+                    st.write(
+                        ", ".join(
+                            career1_data["missing_skills"]
+                        )
+                        if career1_data["missing_skills"]
+                        else "None"
+                    )
+
+                with col2:
+
+                    st.subheader(
+                        f"🚀 {career2}"
+                    )
+
+                    st.metric(
+                        "Career Match",
+                        f"{career2_data['score']}%"
+                    )
+
+                    st.write(
+                        "✅ Skills You Have"
+                    )
+
+                    st.write(
+                        ", ".join(
+                            career2_data["matched_skills"]
+                        )
+                        if career2_data["matched_skills"]
+                        else "None"
+                    )
+
+                    st.write(
+                        "📚 Skills to Learn"
+                    )
+
+                    st.write(
+                        ", ".join(
+                            career2_data["missing_skills"]
+                        )
+                        if career2_data["missing_skills"]
+                        else "None"
+                    )
+
+            else:
+
+                st.warning(
+                    "Please select two different careers."
+                )
+
+        st.divider()
+
+        # --------------------------------------------------
+        # INTERVIEW QUESTION GENERATOR
+        # --------------------------------------------------
+
+        st.header(
+            "🎤 AI Interview Question Generator"
+        )
+
+        interview_questions = generate_interview_questions(
+            top_career["career"],
+            user_skills
+        )
+
+        st.write(
+            f"Practice these questions for a "
+            f"**{top_career['career']}** interview:"
+        )
+
+        for index, question in enumerate(
+            interview_questions,
+            start=1
+        ):
+
+            st.write(
+                f"**{index}. {question}**"
+            )
+
+        st.divider()
+
+        # --------------------------------------------------
+        # JOB DESCRIPTION MATCHER
+        # --------------------------------------------------
+
+        st.header(
+            "💼 Job Description Matcher"
+        )
+
+        job_description = st.text_area(
+            "Paste a Job Description",
+            height=250,
+            placeholder="Paste the job description here..."
+        )
+
+        if st.button("🔍 Analyze Job Match"):
+
+            if job_description.strip():
+
+                match_score = calculate_job_match(
+                    resume_text,
+                    job_description
+                )
+
+                st.subheader(
+                    "📊 Job Match Score"
+                )
+
+                st.metric(
+                    "Resume ↔ Job Match",
+                    f"{match_score}%"
+                )
+
+                if match_score >= 75:
+
+                    st.success(
+                        "🎉 Excellent match! "
+                        "Your resume aligns well with this job."
+                    )
+
+                elif match_score >= 50:
+
+                    st.warning(
+                        "👍 Good match, but there are "
+                        "some areas you could improve."
+                    )
+
+                else:
+
+                    st.error(
+                        "⚠️ Low match. Consider developing "
+                        "more relevant skills."
+                    )
+
+            else:
+
+                st.warning(
+                    "Please paste a job description first."
+                )
+
+        st.divider()
+
+        # --------------------------------------------------
+        # AI CAREER ASSISTANT
+        # --------------------------------------------------
+
+        st.header(
+            "🤖 AI Career Assistant"
+        )
+
+        question = st.text_input(
+            "Ask a career question",
+            placeholder="Example: What skills should I learn?"
+        )
+
+        if st.button("💬 Ask Assistant"):
+
+            if question.strip():
+
+                answer = career_assistant(
+                    question,
+                    top_career["career"],
+                    user_skills,
+                    gap["missing_skills"]
+                )
+
+                st.info(answer)
+
+            else:
+
+                st.warning(
+                    "Please enter a question first."
+                )
