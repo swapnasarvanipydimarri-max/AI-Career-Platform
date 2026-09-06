@@ -10,6 +10,7 @@ from modules.resume_analyzer import analyze_resume
 from modules.interview_generator import generate_interview_questions
 from modules.job_matcher import calculate_job_match
 from modules.ai_assistant import career_assistant
+from modules.gemini_ai import ask_gemini
 
 
 # --------------------------------------------------
@@ -587,12 +588,20 @@ if uploaded_file is not None:
 
             if question.strip():
 
-                answer = career_assistant(
-                    question,
-                    top_career["career"],
-                    user_skills,
-                    gap["missing_skills"]
-                )
+                prompt = f"""
+                You are an AI Career Assistant.
+
+                User's target career: {top_career["career"]}
+                User's current skills: {", ".join(user_skills)}
+                Missing skills: {", ".join(gap["missing_skills"])}
+
+                User's question:
+                {question}
+
+                Give a helpful, practical, and concise career-related answer.
+                """
+
+                answer = ask_gemini(prompt)
 
                 st.info(answer)
 
