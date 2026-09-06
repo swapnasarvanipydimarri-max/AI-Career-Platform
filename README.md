@@ -1,37 +1,39 @@
 # 🎯 AI Career & Skill Gap Intelligence System
 
-An AI-powered career guidance platform that analyzes resumes, identifies skills, recommends suitable career paths, detects skill gaps, and creates personalized learning roadmaps.
+An AI-powered career guidance platform that analyzes a user's resume, identifies skills, recommends suitable career paths, detects skill gaps, and provides a personalized learning roadmap.
 
 ## 🚀 Features
 
 - 📄 Resume PDF Upload
+- 🔍 Resume Text Extraction
+- ⭐ Resume Quality Analysis
 - 🧠 Automatic Skill Extraction
 - 🎯 Career Recommendations
-- 📊 Skill Gap Analysis
-- 📈 Career Match Score
-- ⭐ Resume Quality Analysis
+- 📊 Career Match Scores
+- 📈 Skill Gap Analysis
 - 🗺️ Personalized Learning Roadmap
-- 💡 Project Recommendations
+- 💡 Recommended Projects
+- ⚖️ Career Comparison
 - 🎤 Interview Question Generator
 - 💼 Job Description Matcher
-- ⚖️ Career Comparison
 - 🤖 AI Career Assistant
-- 📚 Learning Resources
 
 ## 🛠️ Technologies Used
 
 - Python
 - Streamlit
-- PyPDF2
 - Pandas
 - NumPy
 - Scikit-learn
+- PyPDF2
 - Plotly
+- JSON
 
 ## 📂 Project Structure
 
 ```text
 AI Career Platform/
+│
 ├── app.py
 ├── requirements.txt
 ├── README.md
