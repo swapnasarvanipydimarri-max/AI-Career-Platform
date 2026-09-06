@@ -10,7 +10,7 @@ from modules.resume_analyzer import analyze_resume
 from modules.interview_generator import generate_interview_questions
 from modules.job_matcher import calculate_job_match
 from modules.ai_assistant import career_assistant
-from modules.gemini_ai import ask_gemini
+from modules.gemini_ai import ask_gemini, analyze_resume_with_ai
 
 
 # --------------------------------------------------
@@ -118,6 +118,30 @@ if uploaded_file is not None:
         st.success(
             "🎉 Your resume contains all the basic sections!"
         )
+
+    st.divider()
+
+    # --------------------------------------------------
+    # AI RESUME FEEDBACK
+    # --------------------------------------------------
+
+    st.header("🤖 AI Resume Feedback")
+
+    if st.button("✨ Get AI Resume Feedback"):
+
+        with st.spinner(
+            "🤖 Gemini is reviewing your resume..."
+        ):
+
+            ai_resume_feedback = analyze_resume_with_ai(
+                resume_text
+            )
+
+        st.success(
+            "✅ AI resume review completed!"
+        )
+
+        st.write(ai_resume_feedback)
 
     st.divider()
 
@@ -589,17 +613,29 @@ if uploaded_file is not None:
             if question.strip():
 
                 prompt = f"""
-                You are an AI Career Assistant.
+You are an expert AI Career Assistant helping a student plan their career.
 
-                User's target career: {top_career["career"]}
-                User's current skills: {", ".join(user_skills)}
-                Missing skills: {", ".join(gap["missing_skills"])}
+Target Career:
+{top_career["career"]}
 
-                User's question:
-                {question}
+Current Skills:
+{", ".join(user_skills) if user_skills else "No skills detected"}
 
-                Give a helpful, practical, and concise career-related answer.
-                """
+Missing Skills:
+{", ".join(gap["missing_skills"]) if gap["missing_skills"] else "No major skill gaps"}
+
+User Question:
+{question}
+
+Give a clear, practical, and personalized answer.
+
+Rules:
+- Focus on the user's target career.
+- Consider their current and missing skills.
+- Recommend specific actions when appropriate.
+- Keep the answer easy for a student to understand.
+- Do not invent information about the user's background.
+"""
 
                 answer = ask_gemini(prompt)
 
