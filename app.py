@@ -1088,9 +1088,13 @@ if (
         "on your resume."
     )
 
+    # FIX:
+    # The button key is different from the session-state
+    # variable name to prevent Streamlit session-state conflict.
+
     if st.button(
         "✨ Get AI Resume Feedback",
-        key="ai_resume_feedback",
+        key="get_ai_resume_feedback_button",
     ):
 
         try:
