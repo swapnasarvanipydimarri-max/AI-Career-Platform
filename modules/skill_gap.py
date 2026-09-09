@@ -1,24 +1,42 @@
-def calculate_skill_gap(user_skills, required_skills):
-    user_skills_lower = {skill.lower() for skill in user_skills}
+def calculate_skill_gap(user_skills, career_skills):
+    """
+    Compare user skills with the skills required for a career.
+    """
+
+    user_skills_lower = {
+        skill.strip().lower()
+        for skill in user_skills
+    }
+
+    career_skills_lower = {
+        skill.strip().lower()
+        for skill in career_skills
+    }
 
     matched_skills = [
-        skill for skill in required_skills
-        if skill.lower() in user_skills_lower
+        skill for skill in career_skills
+        if skill.strip().lower() in user_skills_lower
     ]
 
     missing_skills = [
-        skill for skill in required_skills
-        if skill.lower() not in user_skills_lower
+        skill for skill in career_skills
+        if skill.strip().lower() not in user_skills_lower
     ]
 
-    readiness_score = (
-        len(matched_skills) / len(required_skills) * 100
-        if required_skills
-        else 0
-    )
+    total_required = len(career_skills)
+
+    if total_required > 0:
+        coverage_percentage = (
+            len(matched_skills) / total_required
+        ) * 100
+    else:
+        coverage_percentage = 0
 
     return {
         "matched_skills": matched_skills,
         "missing_skills": missing_skills,
-        "readiness_score": round(readiness_score, 2)
+        "coverage_percentage": round(
+            coverage_percentage, 2
+        ),
+        "total_required_skills": total_required
     }
