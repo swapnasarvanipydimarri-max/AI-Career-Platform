@@ -46,10 +46,6 @@ st.markdown(
     """
     <style>
 
-    /* =========================
-       MAIN APPLICATION
-    ========================= */
-
     .main {
         background-color: #f8fafc;
     }
@@ -59,11 +55,6 @@ st.markdown(
         padding-bottom: 3rem;
         max-width: 1400px;
     }
-
-
-    /* =========================
-       SIDEBAR
-    ========================= */
 
     section[data-testid="stSidebar"] {
         background-color: #111827;
@@ -87,30 +78,15 @@ st.markdown(
         background-color: #1f2937;
     }
 
-
-    /* =========================
-       HEADERS
-    ========================= */
-
     h1,
     h2,
     h3 {
         color: #111827;
     }
 
-
-    /* =========================
-       STREAMLIT CONTAINERS
-    ========================= */
-
     div[data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 16px;
     }
-
-
-    /* =========================
-       UPLOAD AREA
-    ========================= */
 
     [data-testid="stFileUploader"] {
         background-color: white;
@@ -119,21 +95,11 @@ st.markdown(
         border: 1px solid #e5e7eb;
     }
 
-
-    /* =========================
-       BUTTONS
-    ========================= */
-
     .stButton > button {
         border-radius: 9px;
         font-weight: 600;
         min-height: 42px;
     }
-
-
-    /* =========================
-       METRICS
-    ========================= */
 
     [data-testid="stMetric"] {
         background-color: white;
@@ -142,16 +108,34 @@ st.markdown(
         border: 1px solid #e5e7eb;
     }
 
-
-    /* =========================
-       FOOTER
-    ========================= */
-
     .footer-text {
         text-align: center;
         color: #64748b;
         font-size: 13px;
         padding: 15px;
+    }
+
+    .login-container {
+        max-width: 500px;
+        margin: 60px auto;
+        padding: 35px;
+        background-color: white;
+        border-radius: 18px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .login-title {
+        text-align: center;
+        font-size: 32px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .login-subtitle {
+        text-align: center;
+        color: #64748b;
+        margin-bottom: 25px;
     }
 
     </style>
@@ -163,6 +147,17 @@ st.markdown(
 # ============================================================
 # SESSION STATE
 # ============================================================
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if "users" not in st.session_state:
+    st.session_state.users = {
+        "student@example.com": "student123"
+    }
+
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None
 
 if "resume_processed" not in st.session_state:
     st.session_state.resume_processed = False
@@ -182,12 +177,213 @@ if "job_match_score" not in st.session_state:
 if "career_question_answer" not in st.session_state:
     st.session_state.career_question_answer = None
 
+if "generated_interview_questions" not in st.session_state:
+    st.session_state.generated_interview_questions = None
+
+
+# ============================================================
+# LOGIN / SIGN UP PAGE
+# ============================================================
+
+if not st.session_state.authenticated:
+
+    st.markdown(
+        """
+        <div class="login-container">
+
+        <div class="login-title">
+            🤖 AI Career Intelligence
+        </div>
+
+        <div class="login-subtitle">
+            Your personalized AI-powered career companion
+        </div>
+
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    login_tab, signup_tab = st.tabs(
+        ["🔐 Login", "📝 Create Account"]
+    )
+
+    # ========================================================
+    # LOGIN
+    # ========================================================
+
+    with login_tab:
+
+        st.subheader("Welcome Back 👋")
+
+        email = st.text_input(
+            "Email",
+            placeholder="Enter your email",
+            key="login_email",
+        )
+
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Enter your password",
+            key="login_password",
+        )
+
+        if st.button(
+            "🔐 Login",
+            use_container_width=True,
+            key="login_button",
+        ):
+
+            email = email.strip().lower()
+
+            if not email or not password:
+
+                st.warning(
+                    "Please enter your email and password."
+                )
+
+            elif (
+                email in st.session_state.users
+                and st.session_state.users[email] == password
+            ):
+
+                st.session_state.authenticated = True
+                st.session_state.current_user = email
+
+                st.success(
+                    "✅ Login successful!"
+                )
+
+                st.rerun()
+
+            else:
+
+                st.error(
+                    "❌ Invalid email or password."
+                )
+
+        st.info(
+            "Demo account: student@example.com / student123"
+        )
+
+    # ========================================================
+    # SIGN UP
+    # ========================================================
+
+    with signup_tab:
+
+        st.subheader("Create Your Account 🚀")
+
+        new_email = st.text_input(
+            "Email",
+            placeholder="Enter your email",
+            key="signup_email",
+        )
+
+        new_password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Create a password",
+            key="signup_password",
+        )
+
+        confirm_password = st.text_input(
+            "Confirm Password",
+            type="password",
+            placeholder="Re-enter your password",
+            key="signup_confirm_password",
+        )
+
+        if st.button(
+            "📝 Create Account",
+            use_container_width=True,
+            key="signup_button",
+        ):
+
+            new_email = new_email.strip().lower()
+
+            if not new_email or not new_password:
+
+                st.warning(
+                    "Please fill in all required fields."
+                )
+
+            elif "@" not in new_email:
+
+                st.warning(
+                    "Please enter a valid email address."
+                )
+
+            elif len(new_password) < 6:
+
+                st.warning(
+                    "Password must contain at least 6 characters."
+                )
+
+            elif new_password != confirm_password:
+
+                st.error(
+                    "❌ Passwords do not match."
+                )
+
+            elif new_email in st.session_state.users:
+
+                st.error(
+                    "❌ An account with this email already exists."
+                )
+
+            else:
+
+                st.session_state.users[new_email] = new_password
+
+                st.success(
+                    "✅ Account created successfully! "
+                    "Please go to the Login tab."
+                )
+
+    st.stop()
+
+
+# ============================================================
+# LOGOUT SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#1f2937;
+            padding:12px;
+            border-radius:10px;
+            margin-bottom:15px;
+        ">
+            👤 <b>Logged in as</b><br>
+            <span style="font-size:12px;">
+                {st.session_state.current_user}
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button(
+        "🚪 Logout",
+        use_container_width=True,
+        key="logout_button",
+    ):
+
+        st.session_state.authenticated = False
+        st.session_state.current_user = None
+
+        st.rerun()
+
 
 # ============================================================
 # SHARED VARIABLES
 # IMPORTANT:
 # These are initialized before ANY conditional use.
-# This fixes the Pylance uploaded_file warning.
 # ============================================================
 
 uploaded_file = None
@@ -228,12 +424,15 @@ with st.sidebar:
         """
         <div style="text-align:center; padding:10px 4px 20px 4px;">
             <div style="font-size:42px;">🤖</div>
+
             <div style="font-size:24px; font-weight:700;">
                 AI Career
             </div>
+
             <div style="font-size:24px; font-weight:700;">
                 Intelligence
             </div>
+
             <div style="color:#9ca3af; font-size:13px; margin-top:8px;">
                 Your personalized career companion
             </div>
@@ -274,9 +473,6 @@ st.caption(
 
 # ============================================================
 # WELCOME SECTION
-# IMPORTANT:
-# Uses native Streamlit components instead of raw HTML.
-# This prevents HTML tags appearing literally on screen.
 # ============================================================
 
 if page == "🏠 Dashboard" and uploaded_file is None:
@@ -646,10 +842,6 @@ if uploaded_file is not None and page == "🏠 Dashboard":
 
     st.divider()
 
-    # ========================================================
-    # SCORE CARDS
-    # ========================================================
-
     st.subheader("📊 Career Intelligence Overview")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -689,10 +881,6 @@ if uploaded_file is not None and page == "🏠 Dashboard":
         )
 
     st.divider()
-
-    # ========================================================
-    # PROGRESS OVERVIEW
-    # ========================================================
 
     st.subheader("📈 Career Progress Overview")
 
@@ -778,10 +966,6 @@ if uploaded_file is not None and page == "🏠 Dashboard":
 
     st.divider()
 
-    # ========================================================
-    # BEST CAREER
-    # ========================================================
-
     if top_career:
 
         st.subheader("🏆 Your Best Career Match")
@@ -840,10 +1024,6 @@ if uploaded_file is not None and page == "🏠 Dashboard":
                 )
 
     st.divider()
-
-    # ========================================================
-    # TOP CAREERS
-    # ========================================================
 
     st.subheader(
         "🏆 Top Career Recommendations"
@@ -908,10 +1088,6 @@ if (
         "improvement opportunities in your resume."
     )
 
-    # ========================================================
-    # RESUME QUALITY
-    # ========================================================
-
     st.subheader("⭐ Resume Quality Analysis")
 
     col1, col2 = st.columns(2)
@@ -960,10 +1136,6 @@ if (
 
     st.divider()
 
-    # ========================================================
-    # SKILLS
-    # ========================================================
-
     st.subheader(
         "🧠 Skills Detected from Resume"
     )
@@ -981,10 +1153,6 @@ if (
         )
 
     st.divider()
-
-    # ========================================================
-    # SKILL PROFICIENCY
-    # ========================================================
 
     st.subheader(
         "📊 Skill Proficiency Dashboard"
@@ -1077,20 +1245,12 @@ if (
 
     st.divider()
 
-    # ========================================================
-    # AI RESUME FEEDBACK
-    # ========================================================
-
     st.subheader("🤖 AI Resume Feedback")
 
     st.write(
         "Use Gemini to receive personalized feedback "
         "on your resume."
     )
-
-    # FIX:
-    # The button key is different from the session-state
-    # variable name to prevent Streamlit session-state conflict.
 
     if st.button(
         "✨ Get AI Resume Feedback",
@@ -1128,10 +1288,6 @@ if (
             )
 
     st.divider()
-
-    # ========================================================
-    # AI RESUME IMPROVEMENT
-    # ========================================================
 
     st.subheader(
         "✨ AI Resume Improvement Generator"
@@ -1194,10 +1350,6 @@ if (
 
     st.divider()
 
-    # ========================================================
-    # RESUME PREVIEW
-    # ========================================================
-
     with st.expander(
         "📄 View Extracted Resume Text"
     ):
@@ -1224,10 +1376,6 @@ if (
         "Understand your career matches, skill gaps, "
         "ML predictions, and readiness."
     )
-
-    # ========================================================
-    # ML CAREER PREDICTION
-    # ========================================================
 
     st.subheader(
         "🤖 Machine Learning Career Prediction"
@@ -1308,10 +1456,6 @@ if (
             "ML prediction requires at least one detected skill."
         )
 
-    # ========================================================
-    # CAREER RECOMMENDATIONS
-    # ========================================================
-
     st.subheader(
         "🎯 Recommended Careers"
     )
@@ -1370,10 +1514,6 @@ if (
             "No career recommendations were generated."
         )
 
-    # ========================================================
-    # CAREER MATCH CHART
-    # ========================================================
-
     if career_results:
 
         st.subheader(
@@ -1390,10 +1530,6 @@ if (
         )
 
     st.divider()
-
-    # ========================================================
-    # SKILL GAP
-    # ========================================================
 
     st.header(
         "📊 Skill Gap Intelligence"
@@ -1465,10 +1601,6 @@ if (
             )
 
     st.divider()
-
-    # ========================================================
-    # DETAILED JOB SKILL GAP
-    # ========================================================
 
     st.header(
         "💼 Detailed Job Skill-Gap Analysis"
@@ -1545,10 +1677,6 @@ if (
 
     st.divider()
 
-    # ========================================================
-    # CAREER READINESS
-    # ========================================================
-
     st.header(
         "🎯 Overall Career Readiness"
     )
@@ -1617,10 +1745,6 @@ if (
         )
 
     st.divider()
-
-    # ========================================================
-    # CAREER COMPARISON
-    # ========================================================
 
     st.header(
         "⚖️ Career Comparison"
@@ -1770,10 +1894,6 @@ if (
 
     if top_career:
 
-        # ====================================================
-        # ROADMAP
-        # ====================================================
-
         st.subheader(
             "🗺️ Personalized Learning Roadmap"
         )
@@ -1814,10 +1934,6 @@ if (
             st.error(
                 f"⚠️ Roadmap generation failed: {e}"
             )
-
-        # ====================================================
-        # COURSES
-        # ====================================================
 
         st.header(
             "📚 Smart Course & Resource Recommendations"
@@ -1873,10 +1989,6 @@ if (
             st.error(
                 f"⚠️ Course recommendations failed: {e}"
             )
-
-        # ====================================================
-        # 30 / 60 / 90 PLAN
-        # ====================================================
 
         st.header(
             "🗓️ Personalized 30 / 60 / 90-Day Career Plan"
@@ -1941,10 +2053,6 @@ if (
             )
 
         st.divider()
-
-        # ====================================================
-        # PROJECTS
-        # ====================================================
 
         st.header(
             "💡 Recommended Projects"
@@ -2016,10 +2124,6 @@ if (
     )
 
     if top_career:
-
-        # ====================================================
-        # JOB MATCHER
-        # ====================================================
 
         st.subheader(
             "🔍 Job Description Matcher"
@@ -2110,10 +2214,6 @@ if (
 
         st.divider()
 
-        # ====================================================
-        # INTERVIEW GENERATOR
-        # ====================================================
-
         st.header(
             "🎤 AI Interview Question Generator"
         )
@@ -2136,9 +2236,9 @@ if (
                         )
                     )
 
-                st.session_state[
-                    "generated_interview_questions"
-                ] = interview_questions
+                st.session_state.generated_interview_questions = (
+                    interview_questions
+                )
 
             except Exception as e:
 
@@ -2146,9 +2246,7 @@ if (
                     f"⚠️ Interview questions could not be generated: {e}"
                 )
 
-        if st.session_state.get(
-            "generated_interview_questions"
-        ):
+        if st.session_state.generated_interview_questions:
 
             st.write(
                 f"Practice these questions for a "
@@ -2156,9 +2254,7 @@ if (
             )
 
             for index, question in enumerate(
-                st.session_state[
-                    "generated_interview_questions"
-                ],
+                st.session_state.generated_interview_questions,
                 start=1,
             ):
 
@@ -2167,10 +2263,6 @@ if (
                 )
 
         st.divider()
-
-        # ====================================================
-        # MOCK INTERVIEW
-        # ====================================================
 
         run_mock_interview(
             top_career["career"],
@@ -2340,3 +2432,4 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
