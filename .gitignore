@@ -1,6 +1,8 @@
 venv/
+mobile_venv/
 __pycache__/
 *.pyc
+*.pye
 .env
 .streamlit/
-.streamlit/secrets.toml
+build/
