@@ -351,21 +351,32 @@ if not st.session_state.authenticated:
 
 with st.sidebar:
 
-    st.markdown(
+    st.html(
         f"""
         <div style="
             background-color:#1f2937;
             padding:12px;
             border-radius:10px;
             margin-bottom:15px;
+            color:#f9fafb;
         ">
-            👤 <b>Logged in as</b><br>
-            <span style="font-size:12px;">
+            <div style="
+                font-size:13px;
+                font-weight:700;
+                margin-bottom:4px;
+            ">
+                👤 Logged in as
+            </div>
+
+            <div style="
+                font-size:12px;
+                color:#d1d5db;
+                word-break:break-word;
+            ">
                 {st.session_state.current_user}
-            </span>
+            </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     if st.button(
@@ -382,16 +393,11 @@ with st.sidebar:
 
 # ============================================================
 # SHARED VARIABLES
-# IMPORTANT:
-# These are initialized before ANY conditional use.
 # ============================================================
 
 uploaded_file = None
-
 resume_text = ""
-
 user_skills = []
-
 career_results = []
 
 resume_analysis = {
@@ -401,7 +407,6 @@ resume_analysis = {
 }
 
 top_career = None
-
 required_skills = []
 
 gap = {
@@ -420,25 +425,49 @@ overall_readiness = 0
 
 with st.sidebar:
 
-    st.markdown(
+    st.html(
         """
-        <div style="text-align:center; padding:10px 4px 20px 4px;">
-            <div style="font-size:42px;">🤖</div>
+        <div style="
+            text-align:center;
+            padding:10px 4px 20px 4px;
+        ">
 
-            <div style="font-size:24px; font-weight:700;">
+            <div style="
+                font-size:42px;
+                line-height:1.2;
+                margin-bottom:8px;
+            ">
+                🤖
+            </div>
+
+            <div style="
+                font-size:24px;
+                font-weight:700;
+                color:#f9fafb;
+                line-height:1.15;
+            ">
                 AI Career
             </div>
 
-            <div style="font-size:24px; font-weight:700;">
+            <div style="
+                font-size:24px;
+                font-weight:700;
+                color:#f9fafb;
+                line-height:1.15;
+            ">
                 Intelligence
             </div>
 
-            <div style="color:#9ca3af; font-size:13px; margin-top:8px;">
+            <div style="
+                color:#9ca3af;
+                font-size:13px;
+                margin-top:8px;
+            ">
                 Your personalized career companion
             </div>
+
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     st.divider()
@@ -621,50 +650,74 @@ with st.sidebar:
         f"{int(progress_value * 100)}% • Career intelligence progress"
     )
 
-    st.markdown(
+    st.html(
         """
         <div style="
             background-color:#1f2937;
             padding:15px;
             border-radius:12px;
             margin-top:10px;
+            color:#f9fafb;
         ">
 
-        <div style="
-            font-size:13px;
-            font-weight:700;
-            margin-bottom:10px;
-        ">
-            Career Intelligence Journey
-        </div>
+            <div style="
+                font-size:13px;
+                font-weight:700;
+                margin-bottom:10px;
+            ">
+                Career Intelligence Journey
+            </div>
 
-        <div style="font-size:12px; margin:7px 0;">
-            📄 Resume Analysis
-        </div>
+            <div style="
+                font-size:12px;
+                margin:7px 0;
+                color:#f9fafb;
+            ">
+                📄 Resume Analysis
+            </div>
 
-        <div style="font-size:12px; margin:7px 0;">
-            🧠 Skill Extraction
-        </div>
+            <div style="
+                font-size:12px;
+                margin:7px 0;
+                color:#f9fafb;
+            ">
+                🧠 Skill Extraction
+            </div>
 
-        <div style="font-size:12px; margin:7px 0;">
-            🎯 Career Matching
-        </div>
+            <div style="
+                font-size:12px;
+                margin:7px 0;
+                color:#f9fafb;
+            ">
+                🎯 Career Matching
+            </div>
 
-        <div style="font-size:12px; margin:7px 0;">
-            📊 Skill Gap Intelligence
-        </div>
+            <div style="
+                font-size:12px;
+                margin:7px 0;
+                color:#f9fafb;
+            ">
+                📊 Skill Gap Intelligence
+            </div>
 
-        <div style="font-size:12px; margin:7px 0;">
-            🚀 Career Development
-        </div>
+            <div style="
+                font-size:12px;
+                margin:7px 0;
+                color:#f9fafb;
+            ">
+                🚀 Career Development
+            </div>
 
-        <div style="font-size:12px; margin:7px 0;">
-            💼 Job Preparation
-        </div>
+            <div style="
+                font-size:12px;
+                margin:7px 0;
+                color:#f9fafb;
+            ">
+                💼 Job Preparation
+            </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     st.divider()

@@ -4,7 +4,7 @@ import flet as ft
 LIVE_APP_URL = "https://ai-career-platform-sarvani.streamlit.app/"
 
 
-async def main(page: ft.Page):
+def main(page: ft.Page):
     page.title = "AI Career Intelligence"
     page.padding = 30
 
@@ -20,10 +20,9 @@ async def main(page: ft.Page):
 
     async def open_app(e):
         launcher = ft.UrlLauncher()
-
         await launcher.launch_url(
             LIVE_APP_URL,
-            mode=ft.LaunchMode.EXTERNAL_APPLICATION,
+            mode=ft.LaunchMode.IN_APP_WEB_VIEW,
         )
 
     open_button = ft.Button(
