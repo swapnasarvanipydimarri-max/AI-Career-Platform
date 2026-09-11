@@ -5,3 +5,4 @@ scikit-learn
 PyPDF2
 plotly
 google-genai
+argon2-cffi
