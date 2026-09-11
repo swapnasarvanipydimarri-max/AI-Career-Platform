@@ -1,3 +1,7 @@
+import html
+import os
+import time
+
 import streamlit as st
 import pandas as pd
 
@@ -24,6 +28,31 @@ from modules.dataset_insights import (
     get_top_skills,
 )
 from modules.course_recommender import recommend_courses
+from modules.data_manager import get_data_summary
+from modules.data_validator import all_data_valid
+from modules.user_profile import UserProfile
+from modules.career_analysis import CareerAnalysisResult
+from modules.analysis_history import AnalysisHistory
+from modules.analysis_utils import build_analysis_summary
+from modules.authentication import hash_password
+from modules.auth_service import login_user, register_user
+from modules.database import (
+    initialize_database,
+    get_user_profile,
+    get_career_analysis_history,
+    update_user_profile,
+    save_career_analysis,
+)
+from modules.session_security import (
+    create_session,
+    is_session_valid,
+    refresh_session,
+    destroy_session,
+)
+from modules.security_monitor import (
+    log_logout,
+    log_security_error,
+)
 
 
 # ============================================================
@@ -145,19 +174,52 @@ st.markdown(
 
 
 # ============================================================
+# DATABASE AND SECURITY INITIALIZATION
+# ============================================================
+
+# The encryption module reads the key from the environment. For Streamlit
+# Cloud, place CAREER_APP_ENCRYPTION_KEY in Streamlit Secrets.
+try:
+    if "CAREER_APP_ENCRYPTION_KEY" in st.secrets:
+        os.environ["CAREER_APP_ENCRYPTION_KEY"] = st.secrets[
+            "CAREER_APP_ENCRYPTION_KEY"
+        ]
+
+    initialize_database()
+except Exception as error:
+    st.error(
+        "Security/database initialization failed. "
+        "Please configure CAREER_APP_ENCRYPTION_KEY in your environment "
+        "or Streamlit Secrets."
+    )
+    log_security_error("system", "database_initialization")
+    st.stop()
+
+
+# ============================================================
 # SESSION STATE
 # ============================================================
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-if "users" not in st.session_state:
-    st.session_state.users = {
-        "student@example.com": "student123"
-    }
-
 if "current_user" not in st.session_state:
     st.session_state.current_user = None
+
+if "current_user_id" not in st.session_state:
+    st.session_state.current_user_id = None
+
+if "secure_session" not in st.session_state:
+    st.session_state.secure_session = None
+
+if "user_profile" not in st.session_state:
+    st.session_state.user_profile = None
+
+if "analysis_history" not in st.session_state:
+    st.session_state.analysis_history = AnalysisHistory()
+
+if "career_analysis_result" not in st.session_state:
+    st.session_state.career_analysis_result = CareerAnalysisResult()
 
 if "resume_processed" not in st.session_state:
     st.session_state.resume_processed = False
@@ -180,6 +242,121 @@ if "career_question_answer" not in st.session_state:
 if "generated_interview_questions" not in st.session_state:
     st.session_state.generated_interview_questions = None
 
+if "processed_upload_signature" not in st.session_state:
+    st.session_state.processed_upload_signature = None
+
+
+def clear_sensitive_session_data():
+    """Remove personal career data when the user logs out."""
+    sensitive_keys = [
+        "resume_text",
+        "user_skills",
+        "career_results",
+        "resume_analysis",
+        "job_match_score",
+        "ai_resume_feedback",
+        "resume_improvements",
+        "career_question_answer",
+        "generated_interview_questions",
+        "user_profile",
+        "analysis_history",
+        "career_analysis_result",
+        "last_analysis_signature",
+        "upload_signature",
+        "processed_upload_signature",
+    ]
+
+    for key in sensitive_keys:
+        st.session_state.pop(key, None)
+
+
+def restore_persisted_user_data(user):
+    """Load the authenticated user's encrypted profile and analysis history."""
+    user_id = user.get("id")
+
+    profile_data = get_user_profile(user_id)
+
+    if profile_data:
+        profile = UserProfile(
+            email=user.get("email", ""),
+            name=profile_data.get("name", ""),
+            education=profile_data.get("education", ""),
+            experience_years=profile_data.get("experience_years"),
+        )
+        profile.skills = profile_data.get("skills", [])
+        profile.career_interests = profile_data.get(
+            "career_interests", []
+        )
+        profile.resume_text = profile_data.get("resume_text", "")
+        st.session_state.user_profile = profile
+
+        if profile.resume_text:
+            st.session_state.resume_text = profile.resume_text
+            st.session_state.user_skills = profile.skills
+            st.session_state.resume_processed = True
+
+    history = AnalysisHistory()
+
+    for record in get_career_analysis_history(user_id, limit=20):
+        try:
+            import json
+            data = json.loads(record["analysis_data"])
+            result = CareerAnalysisResult(
+                recommended_careers=data.get("recommended_careers", []),
+                predicted_careers=data.get("predicted_careers", []),
+                skill_gaps=data.get("skill_gaps", []),
+                job_skill_gaps=data.get("job_skill_gaps", []),
+                readiness_score=data.get("readiness_score"),
+                job_match_score=data.get("job_match_score"),
+                roadmap=data.get("roadmap", []),
+                courses=data.get("courses", []),
+                projects=data.get("projects", []),
+            )
+            history.records.insert(
+                0,
+                __import__("modules.analysis_history", fromlist=["AnalysisRecord"]).AnalysisRecord(
+                    timestamp=record["created_at"],
+                    result=result,
+                ),
+            )
+        except Exception:
+            continue
+
+    st.session_state.analysis_history = history
+
+
+def ensure_demo_account():
+    """Create the demo account once if it does not already exist."""
+    from modules.database import create_user, create_user_profile, get_user_by_email
+
+    email = "student@example.com"
+
+    if get_user_by_email(email) is None:
+        user_id = create_user(
+            email,
+            hash_password("student123"),
+        )
+        if user_id is not None:
+            create_user_profile(user_id)
+
+
+ensure_demo_account()
+
+
+# Expire inactive authenticated sessions.
+if st.session_state.authenticated:
+    secure_session = st.session_state.get("secure_session")
+
+    if not is_session_valid(secure_session):
+        clear_sensitive_session_data()
+        st.session_state.authenticated = False
+        st.session_state.current_user = None
+        st.session_state.current_user_id = None
+        st.session_state.secure_session = None
+        st.warning("Your session expired due to inactivity. Please log in again.")
+        st.stop()
+
+    refresh_session(secure_session)
 
 # ============================================================
 # LOGIN / SIGN UP PAGE
@@ -234,42 +411,26 @@ if not st.session_state.authenticated:
             use_container_width=True,
             key="login_button",
         ):
-
-            email = email.strip().lower()
-
             if not email or not password:
-
-                st.warning(
-                    "Please enter your email and password."
-                )
-
-            elif (
-                email in st.session_state.users
-                and st.session_state.users[email] == password
-            ):
-
-                st.session_state.authenticated = True
-                st.session_state.current_user = email
-
-                st.success(
-                    "✅ Login successful!"
-                )
-
-                st.rerun()
-
+                st.warning("Please enter your email and password.")
             else:
+                result = login_user(email, password)
 
-                st.error(
-                    "❌ Invalid email or password."
-                )
+                if result["success"]:
+                    user = result["user"]
+                    st.session_state.authenticated = True
+                    st.session_state.current_user = user["email"]
+                    st.session_state.current_user_id = user["id"]
+                    st.session_state.secure_session = create_session(
+                        user["id"]
+                    )
+                    restore_persisted_user_data(user)
+                    st.success("✅ Login successful!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ {result['message']}")
 
-        st.info(
-            "Demo account: student@example.com / student123"
-        )
-
-    # ========================================================
-    # SIGN UP
-    # ========================================================
+        st.info("Demo account: student@example.com / student123")
 
     with signup_tab:
 
@@ -300,47 +461,21 @@ if not st.session_state.authenticated:
             use_container_width=True,
             key="signup_button",
         ):
-
-            new_email = new_email.strip().lower()
-
-            if not new_email or not new_password:
-
-                st.warning(
-                    "Please fill in all required fields."
-                )
-
-            elif "@" not in new_email:
-
-                st.warning(
-                    "Please enter a valid email address."
-                )
-
-            elif len(new_password) < 6:
-
-                st.warning(
-                    "Password must contain at least 6 characters."
-                )
-
-            elif new_password != confirm_password:
-
-                st.error(
-                    "❌ Passwords do not match."
-                )
-
-            elif new_email in st.session_state.users:
-
-                st.error(
-                    "❌ An account with this email already exists."
-                )
-
+            if new_password != confirm_password:
+                st.error("❌ Passwords do not match.")
             else:
-
-                st.session_state.users[new_email] = new_password
-
-                st.success(
-                    "✅ Account created successfully! "
-                    "Please go to the Login tab."
+                result = register_user(
+                    new_email,
+                    new_password,
                 )
+
+                if result["success"]:
+                    st.success(
+                        "✅ Account created successfully! "
+                        "Please go to the Login tab."
+                    )
+                else:
+                    st.error(f"❌ {result['message']}")
 
     st.stop()
 
@@ -373,7 +508,7 @@ with st.sidebar:
                 color:#d1d5db;
                 word-break:break-word;
             ">
-                {st.session_state.current_user}
+                {html.escape(st.session_state.current_user or '')}
             </div>
         </div>
         """
@@ -385,8 +520,14 @@ with st.sidebar:
         key="logout_button",
     ):
 
+        current_email = st.session_state.current_user
+        log_logout(current_email)
+        destroy_session(st.session_state.get("secure_session"))
+        clear_sensitive_session_data()
         st.session_state.authenticated = False
         st.session_state.current_user = None
+        st.session_state.current_user_id = None
+        st.session_state.secure_session = None
 
         st.rerun()
 
@@ -396,15 +537,18 @@ with st.sidebar:
 # ============================================================
 
 uploaded_file = None
-resume_text = ""
-user_skills = []
-career_results = []
+resume_text = st.session_state.get("resume_text", "")
+user_skills = st.session_state.get("user_skills", [])
+career_results = st.session_state.get("career_results", [])
 
-resume_analysis = {
-    "score": 0,
-    "word_count": 0,
-    "suggestions": [],
-}
+resume_analysis = st.session_state.get(
+    "resume_analysis",
+    {
+        "score": 0,
+        "word_count": 0,
+        "suggestions": [],
+    },
+)
 
 top_career = None
 required_skills = []
@@ -417,6 +561,31 @@ gap = {
 }
 
 overall_readiness = 0
+
+MAX_RESUME_SIZE_MB = 10
+MAX_JOB_DESCRIPTION_CHARS = 12000
+MAX_AI_QUESTION_CHARS = 2000
+
+# Short client-side cooldown for AI actions.
+# Gemini also applies server-side rate limiting in modules/gemini_ai.py.
+AI_REQUEST_COOLDOWN_SECONDS = 2
+
+
+def ai_request_allowed():
+    """Prevent accidental rapid duplicate AI requests in one Streamlit session."""
+    current_time = time.time()
+    last_request_time = st.session_state.get(
+        "_last_ai_request_time",
+        0,
+    )
+
+    if current_time - last_request_time < AI_REQUEST_COOLDOWN_SECONDS:
+        return False
+
+    st.session_state["_last_ai_request_time"] = current_time
+    return True
+
+
 
 
 # ============================================================
@@ -534,6 +703,11 @@ if page == "🏠 Dashboard" and uploaded_file is None:
 
 st.subheader("📄 Start Your Career Analysis")
 
+st.caption(
+    "🔒 Privacy: your profile, resume, and career-analysis data is stored encrypted. "
+    "AI features may send relevant content to Gemini for processing."
+)
+
 uploaded_file = st.file_uploader(
     "Upload your Resume (PDF)",
     type=["pdf"],
@@ -543,44 +717,114 @@ uploaded_file = st.file_uploader(
     ),
 )
 
+current_upload_signature = (
+    uploaded_file.name,
+    uploaded_file.size,
+) if uploaded_file is not None else None
+
+if st.session_state.get("upload_signature") != current_upload_signature:
+
+    if st.session_state.get("upload_signature") is not None:
+        st.session_state.ai_resume_feedback = None
+        st.session_state.resume_improvements = None
+        st.session_state.generated_interview_questions = None
+        st.session_state.career_question_answer = None
+        st.session_state.job_match_score = None
+
+    st.session_state.upload_signature = current_upload_signature
+
 
 # ============================================================
 # PROCESS RESUME
 # ============================================================
 
-if uploaded_file is not None:
+if (
+    uploaded_file is not None
+    and st.session_state.get("processed_upload_signature")
+    != current_upload_signature
+):
 
-    try:
+    if uploaded_file.type != "application/pdf":
+        st.session_state.resume_processed = False
+        st.session_state.processed_upload_signature = None
+        st.error("⚠️ Please upload a valid PDF resume.")
 
-        with st.spinner(
-            "🔍 Analyzing your resume and building your career profile..."
-        ):
-
-            resume_text = extract_text_from_pdf(
-                uploaded_file
-            )
-
-            user_skills = extract_skills(
-                resume_text
-            )
-
-            career_results = recommend_careers(
-                user_skills
-            )
-
-            resume_analysis = analyze_resume(
-                resume_text
-            )
-
-        st.session_state.resume_processed = True
-
-    except Exception as e:
+    elif uploaded_file.size > MAX_RESUME_SIZE_MB * 1024 * 1024:
 
         st.session_state.resume_processed = False
+        st.session_state.processed_upload_signature = None
 
         st.error(
-            f"⚠️ Resume analysis failed: {e}"
+            f"⚠️ Resume file is too large. Please upload a PDF under "
+            f"{MAX_RESUME_SIZE_MB} MB."
         )
+
+    else:
+
+        try:
+
+            with st.spinner(
+                "🔍 Analyzing your resume and building your career profile..."
+            ):
+
+                resume_text = extract_text_from_pdf(
+                    uploaded_file
+                )
+
+                if not resume_text.strip():
+                    raise ValueError(
+                        "The uploaded PDF does not contain readable text."
+                    )
+
+                user_skills = extract_skills(
+                    resume_text
+                )
+
+                career_results = recommend_careers(
+                    user_skills
+                )
+
+                resume_analysis = analyze_resume(
+                    resume_text
+                )
+
+            st.session_state.resume_text = resume_text
+            st.session_state.user_skills = user_skills
+            st.session_state.career_results = career_results
+            st.session_state.resume_analysis = resume_analysis
+            st.session_state.resume_processed = True
+            st.session_state.processed_upload_signature = current_upload_signature
+
+            profile = UserProfile(
+                email=st.session_state.current_user or ""
+            )
+
+            profile.update_resume(resume_text)
+
+            for skill in user_skills:
+                profile.add_skill(skill)
+
+            st.session_state.user_profile = profile
+
+            update_user_profile(
+                st.session_state.current_user_id,
+                name=profile.name,
+                education=profile.education,
+                experience_years=profile.experience_years,
+                skills=profile.skills,
+                career_interests=profile.career_interests,
+                resume_text=profile.resume_text,
+            )
+
+        except Exception as e:
+
+            st.session_state.resume_processed = False
+            st.session_state.processed_upload_signature = None
+
+            st.error(
+                "⚠️ Resume analysis could not be completed. "
+                "Please check that the PDF is readable and try again."
+            )
 
 
 # ============================================================
@@ -608,6 +852,55 @@ if career_results:
         resume_analysis["score"],
         top_career["score"],
     )
+
+    analysis_result = CareerAnalysisResult(
+        recommended_careers=[
+            item["career"] for item in career_results[:3]
+        ],
+        skill_gaps=gap["missing_skills"],
+        job_skill_gaps=gap["missing_skills"],
+        readiness_score=overall_readiness,
+    )
+
+    previous_signature = st.session_state.get(
+        "last_analysis_signature"
+    )
+
+    analysis_signature = (
+        tuple(item["career"] for item in career_results[:3]),
+        tuple(gap["missing_skills"]),
+        round(float(overall_readiness), 2),
+    )
+
+    st.session_state.career_analysis_result = analysis_result
+
+    if previous_signature != analysis_signature:
+        st.session_state.analysis_history.add_analysis(
+            analysis_result
+        )
+
+        save_career_analysis(
+            st.session_state.current_user_id,
+            analysis_result.get_summary(),
+        )
+
+        st.session_state.last_analysis_signature = analysis_signature
+
+    if st.session_state.user_profile is not None:
+        st.session_state.user_profile.add_career_interest(
+            top_career["career"]
+        )
+
+        profile = st.session_state.user_profile
+        update_user_profile(
+            st.session_state.current_user_id,
+            name=profile.name,
+            education=profile.education,
+            experience_years=profile.experience_years,
+            skills=profile.skills,
+            career_interests=profile.career_interests,
+            resume_text=profile.resume_text,
+        )
 
 
 # ============================================================
@@ -872,6 +1165,57 @@ if uploaded_file is None and page == "🏠 Dashboard":
             f"⚠️ Dataset insights could not be loaded: {e}"
         )
 
+    st.subheader("🛡️ Platform Data & Privacy Status")
+
+    try:
+        data_summary = get_data_summary()
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Career Records", data_summary["career_profiles_count"])
+
+        with col2:
+            st.metric("Skills Catalog", data_summary["skills_count"])
+
+        with col3:
+            st.metric("Project Catalog", data_summary["projects_count"])
+
+        with col4:
+            if all_data_valid():
+                st.success("Data Valid")
+            else:
+                st.error("Data Check Failed")
+
+        st.caption(
+            "Personal profile, resume, and career-analysis data is stored encrypted. "
+            "Passwords are stored only as Argon2id hashes. AI features send relevant "
+            "resume/question content to Gemini for processing."
+        )
+
+    except Exception:
+        st.warning("Platform data status is temporarily unavailable.")
+
+    if st.session_state.analysis_history.get_analysis_count() > 0:
+        with st.expander("📚 Analysis History"):
+            history_summary = (
+                st.session_state.analysis_history.get_history_summary()
+            )
+
+            for record in reversed(history_summary[-5:]):
+                st.write(
+                    f"**{record['timestamp']}** • "
+                    f"Readiness: {record['readiness_score']}% • "
+                    f"Job Match: "
+                    f"{record['job_match_score'] if record['job_match_score'] is not None else 'Not analyzed'}"
+                )
+
+                if record["recommended_careers"]:
+                    st.caption(
+                        "Careers: "
+                        + ", ".join(record["recommended_careers"])
+                    )
+
 
 # ============================================================
 # DASHBOARD — RESUME UPLOADED
@@ -932,6 +1276,42 @@ if uploaded_file is not None and page == "🏠 Dashboard":
             "💼 Best Career Match",
             f"{career_score}%",
         )
+
+    analysis_summary = build_analysis_summary(
+        readiness_score=overall_readiness,
+        job_match_score=st.session_state.job_match_score,
+        recommended_careers=[
+            item["career"] for item in career_results[:3]
+        ],
+        skill_gaps=gap["missing_skills"],
+    )
+
+    with st.container(border=True):
+        st.subheader("📌 Intelligent Career Summary")
+
+        summary_col1, summary_col2, summary_col3 = st.columns(3)
+
+        with summary_col1:
+            st.metric(
+                "Overall Career Score",
+                (
+                    f"{analysis_summary['overall_score']:.0f}%"
+                    if analysis_summary["overall_score"] is not None
+                    else "N/A"
+                ),
+            )
+
+        with summary_col2:
+            st.metric(
+                "Readiness",
+                analysis_summary["readiness_label"],
+            )
+
+        with summary_col3:
+            st.metric(
+                "Job Match",
+                analysis_summary["match_label"],
+            )
 
     st.divider()
 
@@ -1305,32 +1685,44 @@ if (
         "on your resume."
     )
 
+    st.info(
+        "🔒 Privacy note: AI resume features send the resume text to the "
+        "configured Gemini service for processing. Do not upload sensitive "
+        "information that is not needed for career analysis."
+    )
+
     if st.button(
         "✨ Get AI Resume Feedback",
         key="get_ai_resume_feedback_button",
     ):
 
-        try:
+        if not ai_request_allowed():
+            st.warning("Please wait a moment before sending another AI request.")
+        else:
 
-            with st.spinner(
-                "🤖 Gemini is reviewing your resume..."
-            ):
+            try:
 
-                st.session_state.ai_resume_feedback = (
-                    analyze_resume_with_ai(
-                        resume_text
+                with st.spinner(
+                    "🤖 Gemini is reviewing your resume..."
+                ):
+
+                    st.session_state.ai_resume_feedback = (
+                        analyze_resume_with_ai(
+                            resume_text
+                        )
                     )
+
+                st.success(
+                    "✅ AI resume review completed!"
                 )
 
-            st.success(
-                "✅ AI resume review completed!"
-            )
+            except Exception as e:
 
-        except Exception as e:
+                st.error(
+                    "⚠️ AI resume feedback could not be completed. "
+                    "Please try again shortly."
+                )
 
-            st.error(
-                f"⚠️ AI resume feedback failed: {e}"
-            )
 
     if st.session_state.ai_resume_feedback:
 
@@ -1368,30 +1760,36 @@ if (
         key="resume_improvement",
     ):
 
-        try:
+        if not ai_request_allowed():
+            st.warning("Please wait a moment before sending another AI request.")
+        else:
 
-            with st.spinner(
-                "🤖 Gemini is improving your resume..."
-            ):
+            try:
 
-                st.session_state.resume_improvements = (
-                    generate_resume_improvements(
-                        resume_text,
-                        improvement_career,
-                        user_skills,
-                        improvement_missing_skills,
+                with st.spinner(
+                    "🤖 Gemini is improving your resume..."
+                ):
+
+                    st.session_state.resume_improvements = (
+                        generate_resume_improvements(
+                            resume_text,
+                            improvement_career,
+                            user_skills,
+                            improvement_missing_skills,
+                        )
                     )
+
+                st.success(
+                    "✅ Resume improvement analysis completed!"
                 )
 
-            st.success(
-                "✅ Resume improvement analysis completed!"
-            )
+            except Exception as e:
 
-        except Exception as e:
+                st.error(
+                    "⚠️ Resume improvement could not be completed. "
+                    "Please try again shortly."
+                )
 
-            st.error(
-                f"⚠️ Resume improvement failed: {e}"
-            )
 
     if st.session_state.resume_improvements:
 
@@ -1406,6 +1804,10 @@ if (
     with st.expander(
         "📄 View Extracted Resume Text"
     ):
+        st.caption(
+            "This text is personal resume content. Keep it private when "
+            "sharing your screen or screenshots."
+        )
 
         st.text_area(
             "Resume Content",
@@ -2194,7 +2596,14 @@ if (
             key="analyze_job_match",
         ):
 
-            if job_description.strip():
+            if len(job_description) > MAX_JOB_DESCRIPTION_CHARS:
+
+                st.warning(
+                    f"Please keep the job description under "
+                    f"{MAX_JOB_DESCRIPTION_CHARS:,} characters."
+                )
+
+            elif job_description.strip():
 
                 try:
 
@@ -2213,6 +2622,10 @@ if (
                             0,
                         ),
                         100,
+                    )
+
+                    st.session_state.career_analysis_result.job_match_score = (
+                        st.session_state.job_match_score
                     )
 
                 except Exception as e:
@@ -2376,7 +2789,19 @@ if (
             key="ask_career_assistant",
         ):
 
-            if question.strip():
+            if len(question) > MAX_AI_QUESTION_CHARS:
+                st.warning(
+                    f"Please keep your question under "
+                    f"{MAX_AI_QUESTION_CHARS:,} characters."
+                )
+
+            elif question.strip():
+
+                if not ai_request_allowed():
+                    st.warning(
+                        "Please wait a moment before sending another AI request."
+                    )
+                    st.stop()
 
                 prompt = f"""
 You are an expert AI Career Assistant helping a student

@@ -6,3 +6,5 @@ __pycache__/
 .env
 .streamlit/
 build/
+data/career_platform.db
+logs/
